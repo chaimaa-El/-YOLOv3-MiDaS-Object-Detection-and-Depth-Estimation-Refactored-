@@ -65,9 +65,9 @@ This command will detect objects in images from the data/images folder, estimate
 
 ## Main Functionalities
 
-    --YOLOv3 Object Detection: YOLOv3 detects objects in images based on a custom-trained model. It outputs the bounding boxes and labels of the detected objects.
-    --MiDaS Depth Estimation: MiDaS estimates the depth (distance from the camera) of each detected object, providing additional information for 3D understanding.
-    --Combined Output: The system generates output containing both object detection results and depth estimation information, which can be visualized or used for further processing.
+--YOLOv3 Object Detection: YOLOv3 detects objects in images based on a custom-trained model. It outputs the bounding boxes and labels of the detected objects.
+--MiDaS Depth Estimation: MiDaS estimates the depth (distance from the camera) of each detected object, providing additional information for 3D understanding.
+--Combined Output: The system generates output containing both object detection results and depth estimation information, which can be visualized or used for further processing.
 
 ---
 
