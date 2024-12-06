@@ -14,8 +14,36 @@ The integration of these two models provides the ability to detect and measure t
 
 The repository is organized as follows:
 
-yolo-midas/ │ ├── src/ # Core source code for training and detection │ ├── train.py # Script for training the YOLOv3 model with custom dataset │ ├── detect.py # Script for running inference on images or videos │ ├── utils.py # Utility functions for data preprocessing and postprocessing │ ├── notebooks/ # Folder containing Jupyter notebooks for experimentation │ ├── exploration.ipynb # Jupyter notebook for testing and visualizing model outputs │ ├── cfg/ # Folder for configuration files │ ├── yolov3-custom.cfg # YOLOv3 model config file │ ├── mde.cfg # MiDaS depth estimation model config │ ├── data/ # Dataset folder (can include images, annotations, etc.) │ ├── customdata/ # Custom data folder (images, labels, etc.) │ ├── images/ # Folder containing images for detection │ ├── weights/ # Folder for storing model weights │ ├── best.pt # Pre-trained weights for the YOLOv3 model │ ├── output/ # Folder to store output results from the detection script │ ├── detections/ # Folder to store the detection results │ ├── requirements.txt # List of dependencies needed to run the project ├── main.py # Main entry point for running the project (train or detect) ├── README.md # Project documentation file
+```bash
+yolo-midas/
+│
+├── src/              # Core source code for training and detection
+│   ├── train.py      # Script for training the YOLOv3 model with custom dataset
+│   ├── detect.py     # Script for running inference on images or videos
+│   ├── utils.py      # Utility functions for data preprocessing and postprocessing
+│
+├── notebooks/        # Folder containing Jupyter notebooks for experimentation
+│   ├── exploration.ipynb   # Jupyter notebook for testing and visualizing model outputs
+│
+├── cfg/              # Folder for configuration files
+│   ├── yolov3-custom.cfg    # YOLOv3 model config file
+│   ├── mde.cfg       # MiDaS depth estimation model config
+│
+├── data/             # Dataset folder (can include images, annotations, etc.)
+│   ├── customdata/   # Custom data folder (images, labels, etc.)
+│   ├── images/       # Folder containing images for detection
+│
+├── weights/          # Folder for storing model weights
+│  
+│
+├── output/           # Folder to store output results from the detection script
+│   ├── detections/   # Folder to store the detection results
+│
+├── requirements.txt  # List of dependencies needed to run the project
+├── main.py           # Main entry point for running the project (train or detect)
+├── README.md         # Project documentation file
 
+```
 
 ---
 
@@ -66,7 +94,9 @@ This command will detect objects in images from the data/images folder, estimate
 ## Main Functionalities
 
 --YOLOv3 Object Detection: YOLOv3 detects objects in images based on a custom-trained model. It outputs the bounding boxes and labels of the detected objects.
+
 --MiDaS Depth Estimation: MiDaS estimates the depth (distance from the camera) of each detected object, providing additional information for 3D understanding.
+
 --Combined Output: The system generates output containing both object detection results and depth estimation information, which can be visualized or used for further processing.
 
 ---
