@@ -18,20 +18,15 @@ The repository is organized as follows:
 yolo-midas/
 │
 ├── src/              # contains all the core modules and scripts for the project
-│   ├── cfg/
+│   ├── cfg/          # contains configuration files
 │   ├── utils/        # contains utility and helper functions
-│   ├── model/
+│   ├── model/        # contains the model definition files (for YOLOv3 and MiDaS)
 │   ├── train.py      # Script for training the YOLOv3 model with custom dataset   
-│   ├── detect.py     # Script for running inference and object detection with depth estimation
-      
+│   ├── detect.py     # Script for running inference and object detection with depth estimation   
 │
 ├── notebooks/        # Folder containing Jupyter notebooks for experimentation  
 │
-├── cfg/              # Folder for configuration file
-│
-├── data/             # Dataset folder ( include images, annotations, etc.)
-│
-├── weights/          # Folder for storing model weights
+├── Input/            # Dataset folder ( include images, annotations, etc.)
 │
 ├── output/           # Folder to store output results from the detection script
 │
@@ -110,20 +105,20 @@ If no GPU is available, the code will default to using the CPU.
 ---
 
 ## Code Description
-main.py
+#### main.py
 
 The main.py script is the entry point for running the project. It supports two main modes: train and detect.
 
     --mode train: This mode starts the training process for the YOLOv3 model.
     --mode detect: This mode runs object detection and depth estimation on input images.
 
-train.py
+#### train.py
 
 The train.py script is responsible for training the YOLOv3 model using a custom dataset. It takes in configuration settings, dataset details, and training parameters.
-detect.py
+#### detect.py
 
 The detect.py script performs object detection and depth estimation. It detects objects in input images or videos and calculates the depth of the objects using the MiDaS model.
-utils.py
+#### utils.py
 
 The utils.py file contains utility functions for pre-processing and post-processing data, such as image resizing, loading datasets, or processing results
 
