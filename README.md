@@ -17,27 +17,23 @@ The repository is organized as follows:
 ```bash
 yolo-midas/
 │
-├── src/              # Core source code for training and detection
-│   ├── train.py      # Script for training the YOLOv3 model with custom dataset
-│   ├── detect.py     # Script for running inference on images or videos
-│   ├── utils.py      # Utility functions for data preprocessing and postprocessing
+├── src/              # contains all the core modules and scripts for the project
+│   ├── cfg/
+│   ├── utils/        # contains utility and helper functions
+│   ├── model/
+│   ├── train.py      # Script for training the YOLOv3 model with custom dataset   
+│   ├── detect.py     # Script for running inference and object detection with depth estimation
+      
 │
-├── notebooks/        # Folder containing Jupyter notebooks for experimentation
-│   ├── exploration.ipynb   # Jupyter notebook for testing and visualizing model outputs
+├── notebooks/        # Folder containing Jupyter notebooks for experimentation  
 │
-├── cfg/              # Folder for configuration files
-│   ├── yolov3-custom.cfg    # YOLOv3 model config file
-│   ├── mde.cfg       # MiDaS depth estimation model config
+├── cfg/              # Folder for configuration file
 │
-├── data/             # Dataset folder (can include images, annotations, etc.)
-│   ├── customdata/   # Custom data folder (images, labels, etc.)
-│   ├── images/       # Folder containing images for detection
+├── data/             # Dataset folder ( include images, annotations, etc.)
 │
 ├── weights/          # Folder for storing model weights
-│  
 │
 ├── output/           # Folder to store output results from the detection script
-│   ├── detections/   # Folder to store the detection results
 │
 ├── requirements.txt  # List of dependencies needed to run the project
 ├── main.py           # Main entry point for running the project (train or detect)
