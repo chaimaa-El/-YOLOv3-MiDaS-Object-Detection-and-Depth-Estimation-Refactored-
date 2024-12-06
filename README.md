@@ -43,7 +43,7 @@ yolo-midas/
 ### 1. **Clone the Repository**
 First, clone the repository to your local machine:
 ```bash
-git clone https://github.com/sarvan0506/yolo-midas.git
+git clone https://github.com/chaimaa-El/YOLOv3-MiDaS-Object-Detection-and-Depth-Estimation-Refactored.git
 cd yolo-midas
 ```
 
