@@ -21,7 +21,7 @@ yolo-midas/
 │   ├── cfg/          # contains configuration files
 │   ├── utils/        # contains utility and helper functions
 │   ├── model/        # contains the model definition files (for YOLOv3 and MiDaS)
-│   ├── train.py      # Script for training the YOLOv3 model with custom dataset   
+│   ├── train.py      # Script for training the  the MDENet (Monocular Depth Estimation Network) model with custom dataset   
 │   ├── detect.py     # Script for running inference and object detection with depth estimation   
 │
 ├── notebooks/        # Folder containing Jupyter notebooks for experimentation  
@@ -105,21 +105,23 @@ If no GPU is available, the code will default to using the CPU.
 ---
 
 ## Code Description
-#### main.py
+### main.py
 
 The main.py script is the entry point for running the project. It supports two main modes: train and detect.
 
     --mode train: This mode starts the training process for the YOLOv3 model.
     --mode detect: This mode runs object detection and depth estimation on input images.
 
-#### train.py
+### train.py
 
-The train.py script is responsible for training the YOLOv3 model using a custom dataset. It takes in configuration settings, dataset details, and training parameters.
-#### detect.py
+The train.py script is designed to train the MDENet (Monocular Depth Estimation Network) model using a custom dataset for monocular depth prediction. The training process incorporates various advanced techniques such as mixed precision training, multi-scale augmentation, and learning rate scheduling. This script also supports distributed training across multiple GPUs using PyTorch's distributed data parallelism.
 
-The detect.py script performs object detection and depth estimation. It detects objects in input images or videos and calculates the depth of the objects using the MiDaS model.
-#### utils.py
+### detect.py
 
-The utils.py file contains utility functions for pre-processing and post-processing data, such as image resizing, loading datasets, or processing results
+The detect.py script performs object detection and depth estimation using a custom-trained YOLO-based model. It leverages a multi-stage pipeline that integrates YOLO for object detection and an additional depth estimation model (MDENet). The script is configured through a .cfg file and performs inference on images or videos. It outputs detection results and depth maps for each frame processed.
+
+### utils.py
+
+The utils.py file contains utility functions and imports related to computer vision tasks, specifically for object detection using PyTorch and other libraries. It is heavily used in YOLOv5-like models and other deep learning tasks that involve image processing, model evaluation, and loss computation.
 
 
