@@ -96,10 +96,10 @@ This command will detect objects in images from the data/images folder, estimate
 GPU Usage
 
 If you have a GPU and want to use it for training or detection, ensure you have CUDA installed. You can specify the device as cuda or the appropriate GPU index, for example:
-
+```bash
 python main.py --mode train --device cuda  # Use GPU for training
 python main.py --mode detect --device cuda  # Use GPU for detection
-
+```
 If no GPU is available, the code will default to using the CPU.
 
 ---
