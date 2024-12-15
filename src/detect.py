@@ -1,4 +1,19 @@
+"""
+detect.py
+
+This script performs object detection and monocular depth estimation
+on input images or video streams using a pre-trained model.
+
+Key Features:
+ - Object detection with YOLO
+ - Depth estimation using MDENet
+ - Option to save results as images, video, or text files
+ - Supports input from webcam or directory of images
+"""
+
+
 import argparse
+import onnx
 from sys import platform
 import configparser as cp
 from model.mde_net import *  # Import the depth estimation model (MDENet)
@@ -10,34 +25,40 @@ conf = cp.RawConfigParser()
 conf_path = "cfg/mde.cfg"  # Path to the config file
 conf.read(conf_path)
 
+# Check if the config was loaded successfully
+if not conf.read(conf_path):
+    raise ValueError(f"Could not load configuration file at {conf_path}")
+
+
 # Set YOLO model properties from the config
-yolo_props = {}
-yolo_props["anchors"] = np.array([float(x) for x in conf.get("yolo", "anchors").split(',')]).reshape((-1, 2))
-yolo_props["num_classes"] = conf.get("yolo", "classes")
+yolo_props = {
+    "anchors": np.array([float(x) for x in conf.get("yolo", "anchors").split(',')]).reshape((-1, 2)),
+    "num_classes": int(conf.get("yolo", "classes"))  # To ensure it's an integer
+}
 
 # Set freeze and alpha values for different model components based on the config
 freeze = {}
 alpha = {}
-freeze["resnet"], alpha["resnet"] = (True, 0) if conf.get("freeze", "resnet") == "True" else (False, 1)
-freeze["midas"], alpha["midas"] = (True, 0) if conf.get("freeze", "midas") == "True" else (False, 1)
-freeze["yolo"], alpha["yolo"] = (True, 0) if conf.get("freeze", "yolo") == "True" else (False, 1)
-freeze["planercnn"], alpha["planercnn"] = (True, 0) if conf.get("freeze", "planercnn") == "True" else (False, 1)
+for model in ["resnet", "midas", "yolo", "planercnn"]:
+    freeze[model], alpha[model] = (True, 0) if conf.get("freeze", model) == "True" else (False, 1)
 
 def detect(save_img=False):
     """
     Perform object detection and depth estimation on input images or video streams.
     The function runs inference using the configured model, applies NMS, and optionally saves results.
     
-    :param save_img: Flag to indicate whether to save output images
+    Parameters:
+    - save_img: A boolean flag to indicate whether the output images should be saved.
+    
     """
-    # Define the image size for inference (320x192 if ONNX export is enabled, otherwise use config size)
-    img_size = (320, 192) if ONNX_EXPORT else opt.img_size  # (height, width)
+    # Define image size from config, fallback to default if not set
+    img_size = tuple(map(int, conf.get("settings", "img_size", fallback="320,192").split(',')))
     out, source, weights, half, view_img, save_txt = opt.output, opt.source, opt.weights, opt.half, opt.view_img, opt.save_txt
     webcam = source == '0' or source.startswith('rtsp') or source.startswith('http') or source.endswith('.txt')
 
     # Select device (CPU or CUDA-enabled GPU)
-    device = torch_utils.select_device(device='cpu' if ONNX_EXPORT else opt.device)
-    
+    device = torch.device(conf.get("settings", "device", fallback="cpu"))
+
     # Remove and create the output directory
     if os.path.exists(out):
         shutil.rmtree(out)
@@ -57,7 +78,6 @@ def detect(save_img=False):
         torch.onnx.export(model, img, f, verbose=False, opset_version=11)
 
         # Validate ONNX model
-        import onnx
         model = onnx.load(f)
         onnx.checker.check_model(model)
         print(onnx.helper.printable_graph(model.graph))
