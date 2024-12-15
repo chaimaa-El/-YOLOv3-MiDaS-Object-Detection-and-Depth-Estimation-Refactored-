@@ -86,27 +86,29 @@ for model in ["resnet", "midas", "yolo", "planercnn"]:
     freeze[model], alpha[model] = (True, 0) if conf.get("freeze", model) == "True" else (False, 1)
 
 
-# Optimizer configuration
+# Optimizer settings
+optimizer_settings = {
+    'adam': conf.getboolean('optimizer', 'adam'),
+    'lr_scheduler': conf.get('optimizer', 'lr_scheduler')
+}
+
+# Set up optimizer
 def configure_optimizer(model):
-    pg0, pg1, pg2 = [], [], []  # optimizer parameter groups
+    pg0, pg1, pg2 = [], [], []
     for k, v in dict(model.named_parameters()).items():
         if '.bias' in k:
-            pg2 += [v]  # biases
+            pg2 += [v]
         elif 'Conv2d.weight' in k:
-            pg1 += [v]  # apply weight_decay
+            pg1 += [v]
         else:
-            pg0 += [v]  # all else
+            pg0 += [v]
 
-    if opt.adam:
-        
+    if optimizer_settings['adam']:
         optimizer = optim.Adam(pg0, lr=hyp['lr0'])
-        
     else:
         optimizer = optim.SGD(pg0, lr=hyp['lr0'], momentum=hyp['momentum'], nesterov=True)
-    optimizer.add_param_group({'params': pg1, 'weight_decay': hyp['weight_decay']})  # add pg1 with weight_decay
-    optimizer.add_param_group({'params': pg2})  # add pg2 (biases)
-    del pg0, pg1, pg2
-
+    optimizer.add_param_group({'params': pg1, 'weight_decay': hyp['weight_decay']})
+    optimizer.add_param_group({'params': pg2})
     return optimizer
 
 def train():
@@ -429,8 +431,11 @@ if __name__ == '__main__':
     parser.add_argument('--adam', action='store_true', help='use adam optimizer')
     parser.add_argument('--single-cls', action='store_true', help='train as single-class dataset')
     opt = parser.parse_args()
+    
     opt.weights = last if opt.resume else opt.weights
+    
     print(opt)
+
     opt.img_size.extend([opt.img_size[-1]] * (3 - len(opt.img_size)))  # extend to 3 sizes (min, max, test)
     device = torch_utils.select_device(opt.device, apex=mixed_precision, batch_size=opt.batch_size)
     if device.type == 'cpu':
