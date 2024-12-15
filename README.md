@@ -30,6 +30,8 @@ yolo-midas/
 │
 ├── output/           # Folder to store output results from the detection script
 │
+├── assets/           # Project assets
+│
 ├── requirements.txt  # List of dependencies needed to run the project
 ├── main.py           # Main entry point for running the project (train or detect)
 ├── README.md         # Project documentation file
@@ -109,7 +111,7 @@ If no GPU is available, the code will default to using the CPU.
 
 The main.py script is the entry point for running the project. It supports two main modes: train and detect.
 
-    --mode train: This mode starts the training process for the YOLOv3 model.
+    --mode train: This mode starts the training process for the MDENet model.
     --mode detect: This mode runs object detection and depth estimation on input images.
 
 ### train.py
