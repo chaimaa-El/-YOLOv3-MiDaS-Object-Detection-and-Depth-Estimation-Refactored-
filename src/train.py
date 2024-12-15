@@ -6,7 +6,7 @@ configures the training environment, prepares datasets, and optimizes the model 
 
 Key Features:
 - Supports mixed precision training for faster computations.
-- Configurable hyperparameters and options via command-line arguments and config files.
+- Configurable hyperparameters and options via command-line arguments and config file.
 - Implements advanced optimizers and schedulers for effective training.
 - Supports distributed training and multi-scale input for robustness.
 
@@ -15,15 +15,18 @@ Key Features:
 import argparse
 import configparser as cp
 
+import torch
 import torch.distributed as dist
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
+from torch.utils.tensorboard import SummaryWriter
 
 from utils import test  # import test.py to get mAP after each epoch
 from model.mde_net import MDENet
 from model.monocular_depth_estimation_dataset import *
 from utils.utils import *
 from utils.parse_config import *
+
 
 
 # Attempt to import NVIDIA Apex for mixed precision training
@@ -39,26 +42,23 @@ last = wdir + 'last.pt'    # Filepath for the last saved model
 best = wdir + 'best.pt'    # Filepath for the best saved model
 results_file = 'results.txt'  # File to log training results
 
-# Default Hyperparameters
+# Read configuration settings from a file
+conf = cp.RawConfigParser()
+conf_path = "cfg/mde.cfg"  # Path to the config file
+conf.read(conf_path)
 
-hyp = {'giou': 3.54,  # giou loss gain
-       'cls': 37.4,  # cls loss gain
-       'cls_pw': 1.0,  # cls BCELoss positive_weight
-       'obj': 64.3,  # obj loss gain (*=img_size/320 if img_size != 320)
-       'obj_pw': 1.0,  # obj BCELoss positive_weight
-       'iou_t': 0.225,  # iou training threshold
-       'lr0': 0.01,  # initial learning rate (SGD=5E-3, Adam=5E-4)
-       'lrf': 0.0005,  # final learning rate (with cos scheduler)
-       'momentum': 0.937,  # SGD momentum
-       'weight_decay': 0.000484,  # optimizer weight decay
-       'fl_gamma': 0.0,  # focal loss gamma (efficientDet default is gamma=1.5)
-       'hsv_h': 0.0138,  # image HSV-Hue augmentation (fraction)
-       'hsv_s': 0.678,  # image HSV-Saturation augmentation (fraction)
-       'hsv_v': 0.36,  # image HSV-Value augmentation (fraction)
-       'degrees': 1.98 * 0,  # image rotation (+/- deg)
-       'translate': 0.05 * 0,  # image translation (+/- fraction)
-       'scale': 0.05 * 0,  # image scale (+/- gain)
-       'shear': 0.641 * 0}  # image shear (+/- deg)
+# Check if the config was loaded successfully
+if not conf.read(conf_path):
+    raise ValueError(f"Could not load configuration file at {conf_path}")
+
+
+# Default Hyperparameters
+hyp = {key: float(conf.get("training", key)) for key in [
+    "giou", "cls", "obj", "cls_pw", "obj_pw", "iou_t",'lr0',
+    'lrf',"fl_gamma", "hsv_h", "hsv_s", "hsv_v", "degrees",
+    "translate", "scale", "shear", "momentum", "weight_decay"
+]}
+
 
 # Load additional hyperparameters from file if available
 f = glob.glob('hyp*.txt')
@@ -72,20 +72,42 @@ if hyp['fl_gamma']:
     print('Using FocalLoss(gamma=%g)' % hyp['fl_gamma'])
     
 
-conf = cp.RawConfigParser()
-conf.read("cfg/mde.cfg")
-yolo_props = {}
-yolo_props["anchors"] = np.array([float(x) for x in conf.get("yolo", "anchors").split(',')]).reshape((-1, 2))
-yolo_props["num_classes"] = conf.get("yolo", "classes")
 
-# Freeze settings for components
+# Set YOLO model properties from the config
+yolo_props = {
+    "anchors": np.array([float(x) for x in conf.get("yolo", "anchors").split(',')]).reshape((-1, 2)),
+    "num_classes": int(conf.get("yolo", "classes"))  # To ensure it's an integer
+}
 
+# Set freeze and alpha values for different model components based on the config
 freeze = {}
 alpha = {}
-freeze["resnet"], alpha["resnet"] = (True, 0) if conf.get("freeze", "resnet") == "True" else (False, 1)
-freeze["midas"], alpha["midas"] = (True, 0) if conf.get("freeze", "midas") == "True" else (False, 1)
-freeze["yolo"], alpha["yolo"] = (True, 0) if conf.get("freeze", "yolo") == "True" else (False, 1)
-freeze["planercnn"], alpha["planercnn"] = (True, 0) if conf.get("freeze", "planercnn") == "True" else (False, 1)
+for model in ["resnet", "midas", "yolo", "planercnn"]:
+    freeze[model], alpha[model] = (True, 0) if conf.get("freeze", model) == "True" else (False, 1)
+
+
+# Optimizer configuration
+def configure_optimizer(model):
+    pg0, pg1, pg2 = [], [], []  # optimizer parameter groups
+    for k, v in dict(model.named_parameters()).items():
+        if '.bias' in k:
+            pg2 += [v]  # biases
+        elif 'Conv2d.weight' in k:
+            pg1 += [v]  # apply weight_decay
+        else:
+            pg0 += [v]  # all else
+
+    if opt.adam:
+        
+        optimizer = optim.Adam(pg0, lr=hyp['lr0'])
+        
+    else:
+        optimizer = optim.SGD(pg0, lr=hyp['lr0'], momentum=hyp['momentum'], nesterov=True)
+    optimizer.add_param_group({'params': pg1, 'weight_decay': hyp['weight_decay']})  # add pg1 with weight_decay
+    optimizer.add_param_group({'params': pg2})  # add pg2 (biases)
+    del pg0, pg1, pg2
+
+    return optimizer
 
 def train():
     """
@@ -128,62 +150,13 @@ def train():
 
     # Initialize model
     model = MDENet(path=weights, yolo_props=yolo_props, freeze=freeze).to(device)
-    # print(model)
-    # Optimizer
-    pg0, pg1, pg2 = [], [], []  # optimizer parameter groups
-    for k, v in dict(model.named_parameters()).items():
-        if '.bias' in k:
-            pg2 += [v]  # biases
-        elif 'Conv2d.weight' in k:
-            pg1 += [v]  # apply weight_decay
-        else:
-            pg0 += [v]  # all else
+    # Configure optimizer
+    optimizer = configure_optimizer(model)
 
-    if opt.adam:
-        # hyp['lr0'] *= 0.1  # reduce lr (i.e. SGD=5E-3, Adam=5E-4)
-        optimizer = optim.Adam(pg0, lr=hyp['lr0'])
-        # optimizer = AdaBound(pg0, lr=hyp['lr0'], final_lr=0.1)
-    else:
-        optimizer = optim.SGD(pg0, lr=hyp['lr0'], momentum=hyp['momentum'], nesterov=True)
-    optimizer.add_param_group({'params': pg1, 'weight_decay': hyp['weight_decay']})  # add pg1 with weight_decay
-    optimizer.add_param_group({'params': pg2})  # add pg2 (biases)
-    del pg0, pg1, pg2
 
     start_epoch = 0
     best_fitness = 0.0
-    #attempt_download(weights)
-    """
-    if weights.endswith('.pt'):  # pytorch format
-        # possible weights are '*.pt', 'yolov3-spp.pt', 'yolov3-tiny.pt' etc.
-        chkpt = torch.load(weights, map_location=device)
-
-        # load model
-        try:
-            chkpt['model'] = {k: v for k, v in chkpt['model'].items() if model.state_dict()[k].numel() == v.numel()}
-            model.load_state_dict(chkpt['model'], strict=False)
-        except KeyError as e:
-            s = "%s is not compatible with %s. Specify --weights '' or specify a --cfg compatible with %s. " \
-                "See https://github.com/ultralytics/yolov3/issues/657" % (opt.weights, opt.cfg, opt.weights)
-            raise KeyError(s) from e
-
-        # load optimizer
-        if chkpt['optimizer'] is not None:
-            optimizer.load_state_dict(chkpt['optimizer'])
-            best_fitness = chkpt['best_fitness']
-
-        # load results
-        if chkpt.get('training_results') is not None:
-            with open(results_file, 'w') as file:
-                file.write(chkpt['training_results'])  # write results.txt
-
-        start_epoch = chkpt['epoch'] + 1
-        del chkpt
-     
-
-    elif len(weights) > 0:  # darknet format
-        # possible weights are '*.weights', 'yolov3-tiny.conv.15',  'darknet53.conv.74' etc.
-        load_darknet_weights(model, weights)
-    """
+    
     # Mixed precision training https://github.com/NVIDIA/apex
     if mixed_precision:
         model, optimizer = amp.initialize(model, optimizer, opt_level='O1', verbosity=0)
@@ -192,18 +165,7 @@ def train():
     lf = lambda x: (((1 + math.cos(
         x * math.pi / epochs)) / 2) ** 1.0) * 0.95 + 0.05  # cosine https://arxiv.org/pdf/1812.01187.pdf
     scheduler = lr_scheduler.LambdaLR(optimizer, lr_lambda=lf, last_epoch=start_epoch - 1)
-    # scheduler = lr_scheduler.MultiStepLR(optimizer, [round(epochs * x) for x in [0.8, 0.9]], 0.1, start_epoch - 1)
-
-    # Plot lr schedule
-    # y = []
-    # for _ in range(epochs):
-    #     scheduler.step()
-    #     y.append(optimizer.param_groups[0]['lr'])
-    # plt.plot(y, '.-', label='LambdaLR')
-    # plt.xlabel('epoch')
-    # plt.ylabel('LR')
-    # plt.tight_layout()
-    # plt.savefig('LR.png', dpi=300)
+    
 
     # Initialize distributed training
     if device.type != 'cpu' and torch.cuda.device_count() > 1 and torch.distributed.is_available():
@@ -269,7 +231,7 @@ def train():
     nb = len(dataloader)  # number of batches
     n_burn = max(3 * nb, 500)  # burn-in iterations, max(3 epochs, 500 iterations)
     maps = np.zeros(nc)  # mAP per class
-    # torch.autograd.set_detect_anomaly(True)
+   
     results = (0, 0, 0, 0, 0, 0, 0)  # 'P', 'R', 'mAP', 'F1', 'val GIoU', 'val Objectness', 'val Classification'
     t0 = time.time()
     
@@ -292,9 +254,6 @@ def train():
         print(('\n' + '%10s' * 9) % ('Epoch', 'gpu_mem', 'GIoU', 'obj', 'cls', 'l_depth', 'total', 'targets', 'img_size'))
         pbar = tqdm(enumerate(dataloader), total=nb)  # progress bar
         for i, (imgs, targets, paths, _, dp_imgs, pln_imgs) in pbar:  # batch -------------------------------------------------------------
-            #print("imgs:", len(imgs))
-            #print("targets:", targets)
-            #print("paths:", paths)
             ni = i + nb * epoch  # number integrated batches (since train start)
             imgs = imgs.to(device).float() / 255.0  # uint8 to float32, 0 - 255 to 0.0 - 1.0
             targets = targets.to(device)
@@ -324,19 +283,7 @@ def train():
             # Run model
             midas_out, yolo_out = model(imgs)
             
-            
-            #showimg(imgs[0].detach().cpu())
-            #showimg(midas_out[0].detach().cpu())
-            
-            
-            """
-            print("midas_out", midas_out.shape)
-            print(len(yolo_out))
-            print("yolo_out_0", yolo_out[0].shape)
-            print("yolo_out_1", yolo_out[1].shape)
-            print("yolo_out_2", yolo_out[2].shape)
-            """
-            
+         
             
             
             # Compute loss
@@ -434,10 +381,6 @@ def train():
             if (best_fitness == fi) and not final_epoch:
                 torch.save(chkpt, best)
 
-            # Save backup every 10 epochs (optional)
-            # if epoch > 0 and epoch % 10 == 0:
-            #     torch.save(chkpt, wdir + 'backup%g.pt' % epoch)
-
             # Delete checkpoint
             del chkpt
 
@@ -493,15 +436,13 @@ if __name__ == '__main__':
     if device.type == 'cpu':
         mixed_precision = False
 
-    # scale hyp['obj'] by img_size (evolved at 320)
-    # hyp['obj'] *= opt.img_size[0] / 320.
+
 
     tb_writer = None
     if not opt.evolve:  # Train normally
         try:
             # Start Tensorboard with "tensorboard --logdir=runs", view at http://localhost:6006/
-            from torch.utils.tensorboard import SummaryWriter
-
+            
             tb_writer = SummaryWriter()
             print("Run 'tensorboard --logdir=runs' to view tensorboard at http://localhost:6006/")
         except:
@@ -558,5 +499,3 @@ if __name__ == '__main__':
             # Write mutation results
             print_mutation(hyp, results, opt.bucket)
 
-            # Plot results
-            # plot_evolution_results(hyp)
