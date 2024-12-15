@@ -4,6 +4,12 @@
 
 This repository contains a refactored and organized version of the original sarvan0506/yolo-midas project for object detection and depth estimation. The original project was a collection of Jupyter notebooks without proper structure. This version organizes the code into a clean and modular format and with more maintainable structure with clearer documentation, making it easier for users to experiment with and deploy object detection and depth estimation for real-world applications, such as autonomous navigation and robotic.
 
+Key improvements include:
+- **Integration of configuration file** to manage parameters centrally, making the project more maintainable.
+- Enhanced **modularity** with clearly defined scripts for training and inference.
+- Improved **documentation** for easier understanding and extension of the project.
+
+
 This project combines **YOLOv3** (a state-of-the-art object detection algorithm) with **MiDaS** (a deep learning model for monocular depth estimation) to perform **joint object detection and depth estimation**. The goal is to detect objects in images and estimate their **depth** (distance from the camera), which is crucial for applications such as **autonomous navigation**, **robotics**, and **self-driving cars**.
 
 The integration of these two models provides the ability to detect and measure the distance of objects in real-time from input images.
@@ -37,7 +43,9 @@ yolo-midas/
 ├── README.md         # Project documentation file
 
 ```
+###Configuration File
 
+A centralized configuration file (cfg/mde.cfg) is used to manage all project settings. This approach eliminates hardcoding and centralizes key parameters, improving maintainability and scalability.
 ---
 
 ## Installation and Setup
@@ -94,24 +102,12 @@ This command will detect objects in images from the data/images folder, estimate
 
 ---
 
-## Optional Steps
-GPU Usage
-
-If you have a GPU and want to use it for training or detection, ensure you have CUDA installed. You can specify the device as cuda or the appropriate GPU index, for example:
-```bash
-python main.py --mode train --device cuda  # Use GPU for training
-python main.py --mode detect --device cuda  # Use GPU for detection
-```
-If no GPU is available, the code will default to using the CPU.
-
----
-
-## Code Description
+## Key Scripts
 ### main.py
 
 The main.py script is the entry point for running the project. It supports two main modes: train and detect.
 
-    --mode train: This mode starts the training process for the MDENet model.
+    --mode train: This mode starts the training process for the YOLOv model.
     --mode detect: This mode runs object detection and depth estimation on input images.
 
 ### train.py
