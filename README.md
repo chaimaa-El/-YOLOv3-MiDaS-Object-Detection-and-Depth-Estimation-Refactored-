@@ -43,9 +43,11 @@ yolo-midas/
 ├── README.md         # Project documentation file
 
 ```
-###Configuration File
+
+### Configuration File
 
 A centralized configuration file (cfg/mde.cfg) is used to manage all project settings. This approach eliminates hardcoding and centralizes key parameters, improving maintainability and scalability.
+
 ---
 
 ## Installation and Setup
